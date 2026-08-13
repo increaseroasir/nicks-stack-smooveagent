@@ -1,0 +1,14 @@
+{
+  "worker": "lil-smoove-orb",
+  "environment": "production",
+  "domain": "https://smoove.increaseroas.ai",
+  "active_version": "baf2e2d8",
+  "modified_on": "2026-08-13T10:27:54.317257Z",
+  "compatibility_date": "2026-08-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "cloudflare_etag": "b8035942564998e89adb0cc453df621b9185e5b59459562de31c5f6d70b6dc12",
+  "downloaded_multipart_sha256": "b39c268b048b1cdcfc51e303b8bc26cbe7998841d2a06ad6bdb9bdfdbc9b8224",
+  "exact_worker_sha256": "697d9f70fb48867505f44a7591fc40c919fa3844786e433990c7190b6d0acf96",
+  "asset_count": 10,
+  "notes": "Recovered through the authenticated Cloudflare Workers API. No secret values are stored in this repository."
+}

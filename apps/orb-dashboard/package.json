@@ -1,0 +1,19 @@
+{
+  "name": "lil-smoove-orb-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Recovered and source-controlled Lil Smoove voice dashboard Worker.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-worker.mjs",
+    "verify:production": "node scripts/verify-production.mjs",
+    "check": "npm run build && npm run verify:production",
+    "deploy": "npm run check && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.122.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
