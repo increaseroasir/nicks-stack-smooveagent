@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-UNIT=lil-smoove-gateway.service
+PROGRAM=hermes-gateway
 HOST=127.0.0.1
 PORT=9119
 
-systemctl daemon-reload
-systemctl enable "$UNIT"
-systemctl restart "$UNIT"
-systemctl is-active --quiet "$UNIT"
+supervisorctl restart "$PROGRAM"
+sleep 3
+supervisorctl status "$PROGRAM" | grep -Eq '^hermes-gateway[[:space:]]+RUNNING'
 
 # The gateway is intentionally loopback-only. This endpoint is a local
 # liveness probe and does not expose any model credential.
