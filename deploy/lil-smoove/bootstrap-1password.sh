@@ -50,8 +50,35 @@ if [[ ! -t 0 || ! -t 1 ]]; then
 fi
 
 if ! command -v op >/dev/null 2>&1; then
-  printf '%s\n' 'The 1Password CLI is not installed at the expected runtime path. No secret file or Hermes configuration was changed.' >&2
-  exit 1
+  read -r -p 'The 1Password CLI is missing. Install it now from the official 1Password download? [y/N] ' install_op
+  [[ "$install_op" =~ ^[Yy]$ ]] || { printf '%s\n' 'No changes made.'; exit 1; }
+
+  architecture="$(dpkg --print-architecture)"
+  case "$architecture" in
+    amd64|386|arm64)
+      op_arch="$architecture"
+      ;;
+    armhf)
+      op_arch="arm"
+      ;;
+    *)
+      printf 'Unsupported architecture for the official 1Password CLI package: %s\\n' "$architecture" >&2
+      exit 1
+      ;;
+  esac
+
+  package_file="$(mktemp /tmp/1password-cli.XXXXXX.deb)"
+  if ! curl -fsSL "https://downloads.1password.com/linux/debian/$op_arch/stable/1password-cli-$op_arch-latest.deb" -o "$package_file" || ! dpkg -i "$package_file" >/dev/null; then
+    rm -f -- "$package_file"
+    printf '%s\n' 'The official 1Password CLI installation did not complete. No secret file or Hermes configuration was changed.' >&2
+    exit 1
+  fi
+  rm -f -- "$package_file"
+
+  if ! command -v op >/dev/null 2>&1; then
+    printf '%s\n' 'The 1Password CLI is still unavailable after installation. No secret file or Hermes configuration was changed.' >&2
+    exit 1
+  fi
 fi
 
 if [[ ! -x "$HERMES_BIN" || ! -x "$PYTHON_BIN" || ! -f "$CONFIG" ]]; then
