@@ -11,7 +11,7 @@ supervisorctl status "$PROGRAM" | grep -Eq '^hermes-gateway[[:space:]]+RUNNING'
 
 # The gateway is intentionally loopback-only. This endpoint is a local
 # liveness probe and does not expose any model credential.
-curl --fail --silent --show-error "http://${HOST}:${PORT}/health" >/dev/null
+curl --fail --silent --show-error "http://${HOST}:${PORT}/api/status" >/dev/null
 
 # Reject a listener on a non-loopback address for the gateway port.
 if ss -ltnp "sport = :${PORT}" | grep -Eq '(^|[[:space:]])(0\.0\.0\.0|\[::\]):'; then
