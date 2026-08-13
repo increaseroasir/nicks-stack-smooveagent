@@ -103,7 +103,6 @@ platform_toolsets:
     - clarify
     - code_execution
     - computer_use
-    - cronjob
     - delegation
     - file
     - memory
