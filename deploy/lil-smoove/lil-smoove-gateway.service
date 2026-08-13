@@ -1,0 +1,25 @@
+[Unit]
+Description=Lil Smoove Local Hermes Gateway
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/orgo/lil-smoove/workspace
+Environment=HOME=/home/orgo/lil-smoove/home
+Environment=HERMES_HOME=/home/orgo/lil-smoove/home/.hermes
+Environment=PATH=/home/orgo/lil-smoove/runtime/venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/orgo/lil-smoove/gateway-run.sh
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/home/orgo/lil-smoove
+
+[Install]
+WantedBy=multi-user.target
