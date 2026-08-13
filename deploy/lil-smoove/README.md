@@ -16,6 +16,18 @@ Copy the deployment files into `/home/orgo/lil-smoove` on the target, preserving
 
 Use `recover.sh` for the local-only liveness check. It verifies the active Supervisor program, local health, and the absence of a non-loopback listener on port 9119.
 
+## 1Password Bootstrap
+
+`bootstrap-1password.sh` is the only supported token-entry helper for this isolated runtime. Run it from the Orgo **root** terminal after this deployment directory is present on the target:
+
+```bash
+/home/orgo/lil-smoove/bootstrap-1password.sh
+```
+
+The helper reads `OP_SERVICE_ACCOUNT_TOKEN` through a hidden terminal prompt rather than an argument, environment export, pasted shell command, or a history-bearing file. It writes only `/home/orgo/lil-smoove/home/.hermes/.op.env` with mode `0600`, validates the restricted service account without displaying any value, maps only approved non-empty fields from `Hermes / Hermes Agent Secrets`, enables Hermes’ 1Password source, and restarts the local Supervisor-managed gateway. It uses a zero-second 1Password cache to avoid persisting resolved secret values in Hermes’ cache.
+
+The service account must have **read-only access** to the `Hermes` vault and the `Hermes Agent Secrets` item. The bootstrap file, its token, and all resolved values must never be copied into Git, logs, project documents, screenshots, terminal commands, or the dashboard.
+
 ## Do not commit
 
-Do not commit `.env`, `auth.json`, any Orgo credential, session databases, logs, recovery snapshots, generated voice files, or integration secrets.
+Do not commit `.env`, `.op.env`, `auth.json`, any Orgo credential, session databases, logs, recovery snapshots, generated voice files, or integration secrets.

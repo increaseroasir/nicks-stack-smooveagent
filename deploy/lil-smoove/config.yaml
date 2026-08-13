@@ -97,6 +97,18 @@ display:
   busy_ack_detail: true
   background_process_notifications: all
 
+# The bootstrap service-account token is loaded only from
+# $HERMES_HOME/.op.env (mode 0600, never committed). The secure bootstrap
+# helper populates this map with only non-empty, approved vault fields.
+secrets:
+  onepassword:
+    enabled: false
+    env: {}
+    service_account_token_env: OP_SERVICE_ACCOUNT_TOKEN
+    binary_path: /usr/bin/op
+    cache_ttl_seconds: 0
+    override_existing: true
+
 platform_toolsets:
   cli:
     - browser
