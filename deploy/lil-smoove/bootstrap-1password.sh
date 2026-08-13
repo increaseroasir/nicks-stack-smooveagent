@@ -12,8 +12,7 @@ readonly CONFIG="$HERMES_HOME/config.yaml"
 readonly HERMES_BIN="$ROOT/runtime/venv/bin/hermes"
 readonly PYTHON_BIN="$ROOT/runtime/venv/bin/python"
 readonly SERVICE="hermes-gateway"
-readonly VAULT="Hermes"
-readonly ITEM="Hermes Agent Secrets"
+readonly ITEM_TITLE="Hermes Agent Secrets"
 
 tmp_op_env=''
 backup_op_env=''
@@ -60,16 +59,9 @@ if ! command -v op >/dev/null 2>&1; then
 
   architecture="$(dpkg --print-architecture)"
   case "$architecture" in
-    amd64|386|arm64)
-      op_arch="$architecture"
-      ;;
-    armhf)
-      op_arch="arm"
-      ;;
-    *)
-      printf 'Unsupported architecture for the official 1Password CLI package: %s\n' "$architecture" >&2
-      exit 1
-      ;;
+    amd64|386|arm64) op_arch="$architecture" ;;
+    armhf) op_arch="arm" ;;
+    *) printf 'Unsupported architecture for the official 1Password CLI package: %s\n' "$architecture" >&2; exit 1 ;;
   esac
 
   package_file="$(mktemp /tmp/1password-cli.XXXXXX.deb)"
@@ -79,11 +71,7 @@ if ! command -v op >/dev/null 2>&1; then
     exit 1
   fi
   rm -f -- "$package_file"
-
-  if ! command -v op >/dev/null 2>&1; then
-    printf '%s\n' 'The 1Password CLI is still unavailable after installation. No secret file or Hermes configuration was changed.' >&2
-    exit 1
-  fi
+  command -v op >/dev/null 2>&1 || { printf '%s\n' 'The 1Password CLI is still unavailable after installation.' >&2; exit 1; }
 fi
 
 if [[ ! -x "$HERMES_BIN" || ! -x "$PYTHON_BIN" || ! -f "$CONFIG" ]]; then
@@ -97,9 +85,7 @@ install -d -m 0700 "$HERMES_HOME"
 if [[ -f "$OP_ENV" ]]; then
   read -r -p 'A protected service-account token already exists. Reuse it and continue verification? [Y/n] ' reuse_existing
   reuse_existing="${reuse_existing:-Y}"
-  if [[ "$reuse_existing" =~ ^[Yy]$ ]]; then
-    : # The existing owner-only token file will be loaded below; nothing is overwritten.
-  else
+  if [[ ! "$reuse_existing" =~ ^[Yy]$ ]]; then
     read -r -p 'Replace the existing restricted 1Password service-account token? [y/N] ' replace
     [[ "$replace" =~ ^[Yy]$ ]] || { printf '%s\n' 'No change made.'; exit 0; }
     token_replaced=1
@@ -112,15 +98,11 @@ if [[ ! -f "$OP_ENV" ]]; then
   printf '%s' 'Paste the restricted 1Password service-account token (input will not echo): '
   IFS= read -r -s token
   printf '\n'
-
   if [[ -z "$token" ]]; then
     restore_previous_state
     printf '%s\n' 'No token was entered; the previous state was retained.' >&2
     exit 1
   fi
-
-  # A service-account token is a bearer credential. Keep it out of shell history,
-  # command arguments, stdout, and the persistent Hermes configuration file.
   tmp_op_env="$(mktemp "$HERMES_HOME/.op.env.XXXXXX")"
   printf 'OP_SERVICE_ACCOUNT_TOKEN=%s\n' "$token" > "$tmp_op_env"
   chmod 0600 "$tmp_op_env"
@@ -130,7 +112,6 @@ if [[ ! -f "$OP_ENV" ]]; then
   token_created=1
 fi
 
-# Load only the protected bootstrap file for one non-disclosing validation.
 set -a
 # shellcheck disable=SC1090
 . "$OP_ENV"
@@ -142,55 +123,62 @@ if ! op whoami >/dev/null 2>&1; then
   exit 1
 fi
 
-# Resolve only approved, non-empty fields. Secret bytes are discarded to /dev/null;
-# only field names and pass/fail status are ever displayed or written to config.
-declare -A refs=(
-  [ORGO_API_KEY]="op://$VAULT/$ITEM/ORGO_API_KEY"
-  [ELEVENLABS_API_KEY]="op://$VAULT/$ITEM/ELEVENLABS_API_KEY"
-  [COMPOSIO_CONSUMER_KEY]="op://$VAULT/$ITEM/COMPOSIO_CONSUMER_KEY"
-  [EXA_API_KEY]="op://$VAULT/$ITEM/EXA_API_KEY"
-  [OPENROUTER_API_KEY]="op://$VAULT/$ITEM/OPENROUTER_API_KEY"
-  [FIRECRAWL_API_KEY]="op://$VAULT/$ITEM/FIRECRAWL_API_KEY"
-  [AGENTMAIL_API_KEY]="op://$VAULT/$ITEM/AGENTMAIL_API_KEY"
-  [TELEGRAM_BOT_TOKEN]="op://$VAULT/$ITEM/TELEGRAM_BOT_TOKEN"
-)
-
-resolved_envs=()
-for env_name in "${!refs[@]}"; do
-  if op read -- "${refs[$env_name]}" >/dev/null 2>&1; then
-    resolved_envs+=("$env_name")
-  fi
-done
-
 backup_config="$(mktemp "$HERMES_HOME/config.yaml.previous.XXXXXX")"
 cp -p -- "$CONFIG" "$backup_config"
-resolved_csv="$(IFS=,; printf '%s' "${resolved_envs[*]}")"
 
-# The runtime ships with PyYAML as part of the pinned Hermes environment. This
-# writes only op:// references and enables the source after successful auth.
-LS_CONFIG_PATH="$CONFIG" LS_RESOLVED_ENVS="$resolved_csv" "$PYTHON_BIN" - <<'PY'
+# The service account has deliberately restricted access. It must see exactly
+# one vault and that vault must contain the exact target item. The 1Password
+# JSON is held only in process memory; this parser extracts only op:// reference
+# strings and approved field labels, never field values.
+if ! "$PYTHON_BIN" - "$CONFIG" "$ITEM_TITLE" <<'PY'
+import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 import yaml
 
-config_path = Path(os.environ["LS_CONFIG_PATH"])
-with config_path.open("r", encoding="utf-8") as handle:
-    config = yaml.safe_load(handle) or {}
+config_path = Path(sys.argv[1])
+item_title = sys.argv[2]
+wanted = {
+    "ORGO_API_KEY", "ELEVENLABS_API_KEY", "COMPOSIO_CONSUMER_KEY",
+    "EXA_API_KEY", "OPENROUTER_API_KEY", "FIRECRAWL_API_KEY",
+    "AGENTMAIL_API_KEY", "TELEGRAM_BOT_TOKEN",
+}
+
+def op_json(*args):
+    completed = subprocess.run(
+        ["op", *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        check=True, text=True,
+    )
+    return json.loads(completed.stdout)
+
+try:
+    vaults = op_json("vault", "list", "--format=json")
+    if len(vaults) != 1:
+        raise RuntimeError("expected exactly one service-account-visible vault")
+    vault_id = vaults[0]["id"]
+    items = op_json("item", "list", "--vault", vault_id, "--format=json")
+    matches = [item for item in items if item.get("title") == item_title]
+    if len(matches) != 1:
+        raise RuntimeError("expected exactly one item with the required title")
+    item = op_json("item", "get", matches[0]["id"], "--vault", vault_id, "--format=json")
+except Exception:
+    raise SystemExit(1)
 
 references = {
-    "ORGO_API_KEY": "op://Hermes/Hermes Agent Secrets/ORGO_API_KEY",
-    "ELEVENLABS_API_KEY": "op://Hermes/Hermes Agent Secrets/ELEVENLABS_API_KEY",
-    "COMPOSIO_CONSUMER_KEY": "op://Hermes/Hermes Agent Secrets/COMPOSIO_CONSUMER_KEY",
-    "EXA_API_KEY": "op://Hermes/Hermes Agent Secrets/EXA_API_KEY",
-    "OPENROUTER_API_KEY": "op://Hermes/Hermes Agent Secrets/OPENROUTER_API_KEY",
-    "FIRECRAWL_API_KEY": "op://Hermes/Hermes Agent Secrets/FIRECRAWL_API_KEY",
-    "AGENTMAIL_API_KEY": "op://Hermes/Hermes Agent Secrets/AGENTMAIL_API_KEY",
-    "TELEGRAM_BOT_TOKEN": "op://Hermes/Hermes Agent Secrets/TELEGRAM_BOT_TOKEN",
+    field.get("label"): field.get("reference")
+    for field in item.get("fields", [])
+    if field.get("label") in wanted and field.get("reference")
 }
-resolved = [name for name in os.environ.get("LS_RESOLVED_ENVS", "").split(",") if name]
+if not references:
+    raise SystemExit(1)
+
+with config_path.open("r", encoding="utf-8") as handle:
+    config = yaml.safe_load(handle) or {}
 onepassword = config.setdefault("secrets", {}).setdefault("onepassword", {})
 onepassword["enabled"] = True
-onepassword["env"] = {name: references[name] for name in resolved}
+onepassword["env"] = dict(sorted(references.items()))
 onepassword["service_account_token_env"] = "OP_SERVICE_ACCOUNT_TOKEN"
 onepassword["binary_path"] = "/usr/bin/op"
 onepassword["cache_ttl_seconds"] = 0
@@ -202,13 +190,19 @@ with temporary.open("w", encoding="utf-8") as handle:
 os.chmod(temporary, 0o600)
 os.replace(temporary, config_path)
 os.chmod(config_path, 0o600)
+print("reference_map_field_names=" + ",".join(sorted(references)))
 PY
+then
+  restore_previous_state
+  printf '%s\n' 'The service account could not derive approved references from its visible vault and exact item. The previous isolated runtime state was retained.' >&2
+  exit 1
+fi
 
-# Hermes itself must resolve the references before the change is retained. The
-# dry-run output is discarded because it could contain provider-specific detail.
+# Hermes itself must resolve the non-secret op:// references before the change
+# is retained. All provider-specific output is discarded.
 if ! env HOME="$ROOT/home" HERMES_HOME="$HERMES_HOME" "$HERMES_BIN" secrets onepassword sync >/dev/null 2>&1; then
   restore_previous_state
-  printf '%s\n' 'Hermes could not resolve the configured 1Password references. The previous isolated runtime state was restored.' >&2
+  printf '%s\n' 'Hermes could not resolve the configured 1Password references. The previous isolated runtime state was retained.' >&2
   exit 1
 fi
 
@@ -229,4 +223,3 @@ if ! supervisorctl status "$SERVICE" 2>/dev/null | grep -q 'RUNNING'; then
 fi
 
 printf '%s\n' '1Password bootstrap succeeded. The isolated token file is protected, Hermes resolved the approved references without disclosure, and the local gateway restarted.'
-printf 'Resolved approved field names: %s\n' "${resolved_envs[*]:-none}"
