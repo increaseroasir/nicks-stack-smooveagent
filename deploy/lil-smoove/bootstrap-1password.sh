@@ -18,7 +18,8 @@ readonly ITEM="Hermes Agent Secrets"
 tmp_op_env=''
 backup_op_env=''
 backup_config=''
-had_op_env=0
+token_replaced=0
+token_created=0
 
 cleanup() {
   unset token OP_SERVICE_ACCOUNT_TOKEN
@@ -31,10 +32,14 @@ restore_previous_state() {
     mv -f -- "$backup_config" "$CONFIG"
     backup_config=''
   fi
-  if (( had_op_env == 1 )) && [[ -n "$backup_op_env" && -f "$backup_op_env" ]]; then
-    mv -f -- "$backup_op_env" "$OP_ENV"
-    backup_op_env=''
-  elif (( had_op_env == 0 )); then
+  if (( token_replaced == 1 )); then
+    if [[ -n "$backup_op_env" && -f "$backup_op_env" ]]; then
+      mv -f -- "$backup_op_env" "$OP_ENV"
+      backup_op_env=''
+    else
+      rm -f -- "$OP_ENV"
+    fi
+  elif (( token_created == 1 )); then
     rm -f -- "$OP_ENV"
   fi
 }
@@ -62,7 +67,7 @@ if ! command -v op >/dev/null 2>&1; then
       op_arch="arm"
       ;;
     *)
-      printf 'Unsupported architecture for the official 1Password CLI package: %s\\n' "$architecture" >&2
+      printf 'Unsupported architecture for the official 1Password CLI package: %s\n' "$architecture" >&2
       exit 1
       ;;
   esac
@@ -90,31 +95,40 @@ umask 077
 install -d -m 0700 "$HERMES_HOME"
 
 if [[ -f "$OP_ENV" ]]; then
-  read -r -p 'Replace the existing restricted 1Password service-account token? [y/N] ' replace
-  [[ "$replace" =~ ^[Yy]$ ]] || { printf '%s\n' 'No change made.'; exit 0; }
-  had_op_env=1
-  backup_op_env="$(mktemp "$HERMES_HOME/.op.env.previous.XXXXXX")"
-  mv -f -- "$OP_ENV" "$backup_op_env"
+  read -r -p 'A protected service-account token already exists. Reuse it and continue verification? [Y/n] ' reuse_existing
+  reuse_existing="${reuse_existing:-Y}"
+  if [[ "$reuse_existing" =~ ^[Yy]$ ]]; then
+    : # The existing owner-only token file will be loaded below; nothing is overwritten.
+  else
+    read -r -p 'Replace the existing restricted 1Password service-account token? [y/N] ' replace
+    [[ "$replace" =~ ^[Yy]$ ]] || { printf '%s\n' 'No change made.'; exit 0; }
+    token_replaced=1
+    backup_op_env="$(mktemp "$HERMES_HOME/.op.env.previous.XXXXXX")"
+    mv -f -- "$OP_ENV" "$backup_op_env"
+  fi
 fi
 
-printf '%s' 'Paste the restricted 1Password service-account token (input will not echo): '
-IFS= read -r -s token
-printf '\n'
+if [[ ! -f "$OP_ENV" ]]; then
+  printf '%s' 'Paste the restricted 1Password service-account token (input will not echo): '
+  IFS= read -r -s token
+  printf '\n'
 
-if [[ -z "$token" ]]; then
-  (( had_op_env == 1 )) && mv -f -- "$backup_op_env" "$OP_ENV"
-  printf '%s\n' 'No token was entered; no file was changed.' >&2
-  exit 1
+  if [[ -z "$token" ]]; then
+    restore_previous_state
+    printf '%s\n' 'No token was entered; the previous state was retained.' >&2
+    exit 1
+  fi
+
+  # A service-account token is a bearer credential. Keep it out of shell history,
+  # command arguments, stdout, and the persistent Hermes configuration file.
+  tmp_op_env="$(mktemp "$HERMES_HOME/.op.env.XXXXXX")"
+  printf 'OP_SERVICE_ACCOUNT_TOKEN=%s\n' "$token" > "$tmp_op_env"
+  chmod 0600 "$tmp_op_env"
+  mv -f -- "$tmp_op_env" "$OP_ENV"
+  chmod 0600 "$OP_ENV"
+  tmp_op_env=''
+  token_created=1
 fi
-
-# A service-account token is a bearer credential. Keep it out of shell history,
-# command arguments, stdout, and the persistent Hermes configuration file.
-tmp_op_env="$(mktemp "$HERMES_HOME/.op.env.XXXXXX")"
-printf 'OP_SERVICE_ACCOUNT_TOKEN=%s\n' "$token" > "$tmp_op_env"
-chmod 0600 "$tmp_op_env"
-mv -f -- "$tmp_op_env" "$OP_ENV"
-chmod 0600 "$OP_ENV"
-tmp_op_env=''
 
 # Load only the protected bootstrap file for one non-disclosing validation.
 set -a
@@ -124,7 +138,7 @@ set +a
 
 if ! op whoami >/dev/null 2>&1; then
   restore_previous_state
-  printf '%s\n' 'The token could not authenticate to 1Password. The previous isolated runtime state was restored.' >&2
+  printf '%s\n' 'The protected service-account token could not authenticate to 1Password. The previous isolated runtime state was retained.' >&2
   exit 1
 fi
 
@@ -150,17 +164,16 @@ done
 
 backup_config="$(mktemp "$HERMES_HOME/config.yaml.previous.XXXXXX")"
 cp -p -- "$CONFIG" "$backup_config"
+resolved_csv="$(IFS=,; printf '%s' "${resolved_envs[*]}")"
 
 # The runtime ships with PyYAML as part of the pinned Hermes environment. This
 # writes only op:// references and enables the source after successful auth.
-ROOT="$ROOT" HERMES_HOME="$HERMES_HOME" CONFIG="$CONFIG" \
-  RESOLVED_ENVS="$(IFS=,; printf '%s' "${resolved_envs[*]}")" \
-  "$PYTHON_BIN" - <<'PY'
+LS_CONFIG_PATH="$CONFIG" LS_RESOLVED_ENVS="$resolved_csv" "$PYTHON_BIN" - <<'PY'
 import os
 from pathlib import Path
 import yaml
 
-config_path = Path(os.environ["CONFIG"])
+config_path = Path(os.environ["LS_CONFIG_PATH"])
 with config_path.open("r", encoding="utf-8") as handle:
     config = yaml.safe_load(handle) or {}
 
@@ -174,7 +187,7 @@ references = {
     "AGENTMAIL_API_KEY": "op://Hermes/Hermes Agent Secrets/AGENTMAIL_API_KEY",
     "TELEGRAM_BOT_TOKEN": "op://Hermes/Hermes Agent Secrets/TELEGRAM_BOT_TOKEN",
 }
-resolved = [name for name in os.environ.get("RESOLVED_ENVS", "").split(",") if name]
+resolved = [name for name in os.environ.get("LS_RESOLVED_ENVS", "").split(",") if name]
 onepassword = config.setdefault("secrets", {}).setdefault("onepassword", {})
 onepassword["enabled"] = True
 onepassword["env"] = {name: references[name] for name in resolved}
@@ -193,7 +206,7 @@ PY
 
 # Hermes itself must resolve the references before the change is retained. The
 # dry-run output is discarded because it could contain provider-specific detail.
-if ! HOME="$ROOT/home" HERMES_HOME="$HERMES_HOME" "$HERMES_BIN" secrets onepassword sync >/dev/null 2>&1; then
+if ! env HOME="$ROOT/home" HERMES_HOME="$HERMES_HOME" "$HERMES_BIN" secrets onepassword sync >/dev/null 2>&1; then
   restore_previous_state
   printf '%s\n' 'Hermes could not resolve the configured 1Password references. The previous isolated runtime state was restored.' >&2
   exit 1
