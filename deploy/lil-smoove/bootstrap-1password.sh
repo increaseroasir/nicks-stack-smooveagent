@@ -9,9 +9,35 @@ readonly ROOT="/home/orgo/lil-smoove"
 readonly HERMES_HOME="$ROOT/home/.hermes"
 readonly OP_ENV="$HERMES_HOME/.op.env"
 readonly CONFIG="$HERMES_HOME/config.yaml"
+readonly HERMES_BIN="$ROOT/runtime/venv/bin/hermes"
+readonly PYTHON_BIN="$ROOT/runtime/venv/bin/python"
 readonly SERVICE="hermes-gateway"
 readonly VAULT="Hermes"
 readonly ITEM="Hermes Agent Secrets"
+
+tmp_op_env=''
+backup_op_env=''
+backup_config=''
+had_op_env=0
+
+cleanup() {
+  unset token OP_SERVICE_ACCOUNT_TOKEN
+  [[ -n "$tmp_op_env" ]] && rm -f -- "$tmp_op_env"
+}
+trap cleanup EXIT
+
+restore_previous_state() {
+  if [[ -n "$backup_config" && -f "$backup_config" ]]; then
+    mv -f -- "$backup_config" "$CONFIG"
+    backup_config=''
+  fi
+  if (( had_op_env == 1 )) && [[ -n "$backup_op_env" && -f "$backup_op_env" ]]; then
+    mv -f -- "$backup_op_env" "$OP_ENV"
+    backup_op_env=''
+  elif (( had_op_env == 0 )); then
+    rm -f -- "$OP_ENV"
+  fi
+}
 
 if (( EUID != 0 )); then
   printf '%s\n' 'Run this helper from the Orgo root terminal so it can write the isolated Hermes runtime files.' >&2
@@ -24,12 +50,12 @@ if [[ ! -t 0 || ! -t 1 ]]; then
 fi
 
 if ! command -v op >/dev/null 2>&1; then
-  printf '%s\n' 'The 1Password CLI is not installed at the expected runtime path. No files were changed.' >&2
+  printf '%s\n' 'The 1Password CLI is not installed at the expected runtime path. No secret file or Hermes configuration was changed.' >&2
   exit 1
 fi
 
-if [[ ! -f "$CONFIG" ]]; then
-  printf '%s\n' 'The isolated Hermes configuration is missing. No files were changed.' >&2
+if [[ ! -x "$HERMES_BIN" || ! -x "$PYTHON_BIN" || ! -f "$CONFIG" ]]; then
+  printf '%s\n' 'The isolated Hermes runtime is incomplete. No secret file or Hermes configuration was changed.' >&2
   exit 1
 fi
 
@@ -39,6 +65,9 @@ install -d -m 0700 "$HERMES_HOME"
 if [[ -f "$OP_ENV" ]]; then
   read -r -p 'Replace the existing restricted 1Password service-account token? [y/N] ' replace
   [[ "$replace" =~ ^[Yy]$ ]] || { printf '%s\n' 'No change made.'; exit 0; }
+  had_op_env=1
+  backup_op_env="$(mktemp "$HERMES_HOME/.op.env.previous.XXXXXX")"
+  mv -f -- "$OP_ENV" "$backup_op_env"
 fi
 
 printf '%s' 'Paste the restricted 1Password service-account token (input will not echo): '
@@ -46,19 +75,14 @@ IFS= read -r -s token
 printf '\n'
 
 if [[ -z "$token" ]]; then
+  (( had_op_env == 1 )) && mv -f -- "$backup_op_env" "$OP_ENV"
   printf '%s\n' 'No token was entered; no file was changed.' >&2
   exit 1
 fi
 
 # A service-account token is a bearer credential. Keep it out of shell history,
-# command arguments, stdout, and the persistent config file.
+# command arguments, stdout, and the persistent Hermes configuration file.
 tmp_op_env="$(mktemp "$HERMES_HOME/.op.env.XXXXXX")"
-cleanup() {
-  unset token OP_SERVICE_ACCOUNT_TOKEN
-  [[ -n "${tmp_op_env:-}" ]] && rm -f -- "$tmp_op_env"
-}
-trap cleanup EXIT
-
 printf 'OP_SERVICE_ACCOUNT_TOKEN=%s\n' "$token" > "$tmp_op_env"
 chmod 0600 "$tmp_op_env"
 mv -f -- "$tmp_op_env" "$OP_ENV"
@@ -72,8 +96,8 @@ set -a
 set +a
 
 if ! op whoami >/dev/null 2>&1; then
-  rm -f -- "$OP_ENV"
-  printf '%s\n' 'The token could not authenticate to 1Password. The bootstrap file was removed and Hermes was left unchanged.' >&2
+  restore_previous_state
+  printf '%s\n' 'The token could not authenticate to 1Password. The previous isolated runtime state was restored.' >&2
   exit 1
 fi
 
@@ -97,11 +121,14 @@ for env_name in "${!refs[@]}"; do
   fi
 done
 
+backup_config="$(mktemp "$HERMES_HOME/config.yaml.previous.XXXXXX")"
+cp -p -- "$CONFIG" "$backup_config"
+
 # The runtime ships with PyYAML as part of the pinned Hermes environment. This
-# writes only op:// references and enables the integration after successful auth.
+# writes only op:// references and enables the source after successful auth.
 ROOT="$ROOT" HERMES_HOME="$HERMES_HOME" CONFIG="$CONFIG" \
   RESOLVED_ENVS="$(IFS=,; printf '%s' "${resolved_envs[*]}")" \
-  /home/orgo/lil-smoove/runtime/venv/bin/python - <<'PY'
+  "$PYTHON_BIN" - <<'PY'
 import os
 from pathlib import Path
 import yaml
@@ -137,10 +164,21 @@ os.replace(temporary, config_path)
 os.chmod(config_path, 0o600)
 PY
 
+# Hermes itself must resolve the references before the change is retained. The
+# dry-run output is discarded because it could contain provider-specific detail.
+if ! HOME="$ROOT/home" HERMES_HOME="$HERMES_HOME" "$HERMES_BIN" secrets onepassword sync >/dev/null 2>&1; then
+  restore_previous_state
+  printf '%s\n' 'Hermes could not resolve the configured 1Password references. The previous isolated runtime state was restored.' >&2
+  exit 1
+fi
+
 unset token OP_SERVICE_ACCOUNT_TOKEN
+rm -f -- "$backup_config" "$backup_op_env"
+backup_config=''
+backup_op_env=''
 
 if ! supervisorctl restart "$SERVICE" >/dev/null 2>&1; then
-  printf '%s\n' 'The token and secret references were stored, but the Hermes gateway did not restart. Run the local recovery procedure before using integrations.' >&2
+  printf '%s\n' '1Password resolution passed, but the Hermes gateway did not restart. Run the local recovery procedure before using integrations.' >&2
   exit 1
 fi
 
@@ -150,5 +188,5 @@ if ! supervisorctl status "$SERVICE" 2>/dev/null | grep -q 'RUNNING'; then
   exit 1
 fi
 
-printf '%s\n' '1Password bootstrap succeeded. The isolated token file is protected, approved non-empty secret references are enabled, and Hermes restarted without displaying secret values.'
+printf '%s\n' '1Password bootstrap succeeded. The isolated token file is protected, Hermes resolved the approved references without disclosure, and the local gateway restarted.'
 printf 'Resolved approved field names: %s\n' "${resolved_envs[*]:-none}"
