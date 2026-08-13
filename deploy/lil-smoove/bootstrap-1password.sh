@@ -12,7 +12,8 @@ readonly CONFIG="$HERMES_HOME/config.yaml"
 readonly HERMES_BIN="$ROOT/runtime/venv/bin/hermes"
 readonly PYTHON_BIN="$ROOT/runtime/venv/bin/python"
 readonly SERVICE="hermes-gateway"
-readonly ITEM_TITLE="Hermes Agent Secrets"
+readonly VAULT="Manus Hermes Orgo"
+readonly ITEM="Hermes Agent Secrets"
 
 tmp_op_env=''
 backup_op_env=''
@@ -123,62 +124,60 @@ if ! op whoami >/dev/null 2>&1; then
   exit 1
 fi
 
+# Test approved references by sending their values straight to /dev/null. Only
+# successful field names are retained; values never enter logs, stdout, or files.
+declare -A refs=(
+  [ORGO_API_KEY]="op://$VAULT/$ITEM/ORGO_API_KEY"
+  [ELEVENLABS_API_KEY]="op://$VAULT/$ITEM/ELEVENLABS_API_KEY"
+  [COMPOSIO_CONSUMER_KEY]="op://$VAULT/$ITEM/COMPOSIO_CONSUMER_KEY"
+  [EXA_API_KEY]="op://$VAULT/$ITEM/EXA_API_KEY"
+  [OPENROUTER_API_KEY]="op://$VAULT/$ITEM/OPENROUTER_API_KEY"
+  [FIRECRAWL_API_KEY]="op://$VAULT/$ITEM/FIRECRAWL_API_KEY"
+  [AGENTMAIL_API_KEY]="op://$VAULT/$ITEM/AGENTMAIL_API_KEY"
+  [HONCHO_API_KEY]="op://$VAULT/$ITEM/HONCHO_API_KEY"
+  [TELEGRAM_BOT_TOKEN]="op://$VAULT/$ITEM/TELEGRAM_BOT_TOKEN"
+)
+
+resolved_envs=()
+for env_name in "${!refs[@]}"; do
+  if op read -- "${refs[$env_name]}" >/dev/null 2>&1; then
+    resolved_envs+=("$env_name")
+  fi
+done
+
+if (( ${#resolved_envs[@]} == 0 )); then
+  printf '%s\n' 'No approved secret fields could be resolved from the owner-confirmed vault and item. The runtime configuration was not changed.' >&2
+  exit 1
+fi
+
 backup_config="$(mktemp "$HERMES_HOME/config.yaml.previous.XXXXXX")"
 cp -p -- "$CONFIG" "$backup_config"
+resolved_csv="$(IFS=,; printf '%s' "${resolved_envs[*]}")"
 
-# The service account has deliberately restricted access. It must see exactly
-# one vault and that vault must contain the exact target item. The 1Password
-# JSON is held only in process memory; this parser extracts only op:// reference
-# strings and approved field labels, never field values.
-if ! "$PYTHON_BIN" - "$CONFIG" "$ITEM_TITLE" <<'PY'
-import json
+# Write only the confirmed op:// references, never their resolved values.
+LS_CONFIG_PATH="$CONFIG" LS_RESOLVED_ENVS="$resolved_csv" "$PYTHON_BIN" - <<'PY'
 import os
-import subprocess
-import sys
 from pathlib import Path
 import yaml
 
-config_path = Path(sys.argv[1])
-item_title = sys.argv[2]
-wanted = {
-    "ORGO_API_KEY", "ELEVENLABS_API_KEY", "COMPOSIO_CONSUMER_KEY",
-    "EXA_API_KEY", "OPENROUTER_API_KEY", "FIRECRAWL_API_KEY",
-    "AGENTMAIL_API_KEY", "TELEGRAM_BOT_TOKEN",
-}
-
-def op_json(*args):
-    completed = subprocess.run(
-        ["op", *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-        check=True, text=True,
-    )
-    return json.loads(completed.stdout)
-
-try:
-    vaults = op_json("vault", "list", "--format=json")
-    if len(vaults) != 1:
-        raise RuntimeError("expected exactly one service-account-visible vault")
-    vault_id = vaults[0]["id"]
-    items = op_json("item", "list", "--vault", vault_id, "--format=json")
-    matches = [item for item in items if item.get("title") == item_title]
-    if len(matches) != 1:
-        raise RuntimeError("expected exactly one item with the required title")
-    item = op_json("item", "get", matches[0]["id"], "--vault", vault_id, "--format=json")
-except Exception:
-    raise SystemExit(1)
-
+config_path = Path(os.environ["LS_CONFIG_PATH"])
 references = {
-    field.get("label"): field.get("reference")
-    for field in item.get("fields", [])
-    if field.get("label") in wanted and field.get("reference")
+    "ORGO_API_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/ORGO_API_KEY",
+    "ELEVENLABS_API_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/ELEVENLABS_API_KEY",
+    "COMPOSIO_CONSUMER_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/COMPOSIO_CONSUMER_KEY",
+    "EXA_API_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/EXA_API_KEY",
+    "OPENROUTER_API_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/OPENROUTER_API_KEY",
+    "FIRECRAWL_API_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/FIRECRAWL_API_KEY",
+    "AGENTMAIL_API_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/AGENTMAIL_API_KEY",
+    "HONCHO_API_KEY": "op://Manus Hermes Orgo/Hermes Agent Secrets/HONCHO_API_KEY",
+    "TELEGRAM_BOT_TOKEN": "op://Manus Hermes Orgo/Hermes Agent Secrets/TELEGRAM_BOT_TOKEN",
 }
-if not references:
-    raise SystemExit(1)
-
+resolved = [name for name in os.environ.get("LS_RESOLVED_ENVS", "").split(",") if name]
 with config_path.open("r", encoding="utf-8") as handle:
     config = yaml.safe_load(handle) or {}
 onepassword = config.setdefault("secrets", {}).setdefault("onepassword", {})
 onepassword["enabled"] = True
-onepassword["env"] = dict(sorted(references.items()))
+onepassword["env"] = {name: references[name] for name in sorted(resolved)}
 onepassword["service_account_token_env"] = "OP_SERVICE_ACCOUNT_TOKEN"
 onepassword["binary_path"] = "/usr/bin/op"
 onepassword["cache_ttl_seconds"] = 0
@@ -190,15 +189,9 @@ with temporary.open("w", encoding="utf-8") as handle:
 os.chmod(temporary, 0o600)
 os.replace(temporary, config_path)
 os.chmod(config_path, 0o600)
-print("reference_map_field_names=" + ",".join(sorted(references)))
 PY
-then
-  restore_previous_state
-  printf '%s\n' 'The service account could not derive approved references from its visible vault and exact item. The previous isolated runtime state was retained.' >&2
-  exit 1
-fi
 
-# Hermes itself must resolve the non-secret op:// references before the change
+# Hermes itself must resolve the configured op:// references before the change
 # is retained. All provider-specific output is discarded.
 if ! env HOME="$ROOT/home" HERMES_HOME="$HERMES_HOME" "$HERMES_BIN" secrets onepassword sync >/dev/null 2>&1; then
   restore_previous_state
@@ -222,4 +215,5 @@ if ! supervisorctl status "$SERVICE" 2>/dev/null | grep -q 'RUNNING'; then
   exit 1
 fi
 
-printf '%s\n' '1Password bootstrap succeeded. The isolated token file is protected, Hermes resolved the approved references without disclosure, and the local gateway restarted.'
+printf '%s\n' '1Password bootstrap succeeded. The isolated token file is protected, Hermes resolved the owner-confirmed references without disclosure, and the local gateway restarted.'
+printf 'Resolved approved field names: %s\n' "${resolved_envs[*]}"
