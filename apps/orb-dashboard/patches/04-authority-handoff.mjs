@@ -1,0 +1,3 @@
+export const id = "04-authority-handoff";
+export const oldString = "lineNumber:773,columnNumber:11},this)]},void 0,!0,{fileName:\"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx\",lineNumber:771";
+export const newString = "lineNumber:773,columnNumber:11},this),V.jsxDEV(\"a\",{\"data-loc\":\"client/src/pages/Home.tsx:774\",className:\"admin-link\",href:\"/chat\",children:\"Decide in Hermes admin — separate console\"},void 0,!1,{fileName:\"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx\",lineNumber:774,columnNumber:11},this)]},void 0,!0,{fileName:\"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx\",lineNumber:771";

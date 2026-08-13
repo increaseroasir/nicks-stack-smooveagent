@@ -32,9 +32,17 @@ fi
 # two Supervisor instances or manual launches from creating duplicate Telegram
 # dispatchers while leaving the independent TUI backend untouched.
 exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
+locked=0
+for _ in $(seq 1 30); do
+  if flock -n 9; then
+    locked=1
+    break
+  fi
+  sleep 1
+done
+if (( locked == 0 )); then
   printf '%s\n' 'A Lil Smoove messaging gateway already owns the process lock.' >&2
-  exit 75
+  exit 1
 fi
 
 exec "$HERMES_BIN" gateway run --replace --external-supervisor

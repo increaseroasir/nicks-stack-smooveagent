@@ -1,17 +1,10 @@
 [
   {
     "route": "/",
-    "path": "public/index",
+    "path": "public/index.html",
     "mime": "text/html; charset=UTF-8",
     "bytes": 368013,
-    "sha256": "ccd0c880c3aad4780d228945fe4499af3ca61c3e1257cc1267e7d5dac0c7a337"
-  },
-  {
-    "route": "/ui/.gitkeep",
-    "path": "public/ui/.gitkeep",
-    "mime": "application/octet-stream",
-    "bytes": 0,
-    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "sha256": "819b3338b93623342e88423f0bfeeac8482f2949d77cf201820cec4b222c6f47"
   },
   {
     "route": "/ui/__manus__/debug-collector.js",
@@ -28,6 +21,13 @@
     "sha256": "3f744d4d0243655f63d175a680fcc82aaf2817bfc8cffcb8d20f57ba5fc7cf70"
   },
   {
+    "route": "/ui/.gitkeep",
+    "path": "public/ui/.gitkeep",
+    "mime": "application/octet-stream",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
     "route": "/ui/assets/index-Ci6bqvaj.css",
     "path": "public/ui/assets/index-Ci6bqvaj.css",
     "mime": "text/css; charset=UTF-8",
@@ -35,11 +35,11 @@
     "sha256": "9ccf3b19600a6b48fabaee51f306a7e322add10e35af915efa97f68a85078196"
   },
   {
-    "route": "/ui/assets/index-DrSg8VbT.js",
-    "path": "public/ui/assets/index-DrSg8VbT.js",
+    "route": "/ui/assets/index-d5d375f4.js",
+    "path": "public/ui/assets/index-d5d375f4.js",
     "mime": "text/javascript; charset=UTF-8",
-    "bytes": 565626,
-    "sha256": "25830c9bf7c54f96a5aeb0eed512700a96aeafa8039cca1ec52fafeef871856c"
+    "bytes": 567464,
+    "sha256": "d5d375f48506413774554e7862dfe42a0fdea8399e55ea2466ff4d7d9042794c"
   },
   {
     "route": "/ui/media/lil-smoove-orb-material.jpg",

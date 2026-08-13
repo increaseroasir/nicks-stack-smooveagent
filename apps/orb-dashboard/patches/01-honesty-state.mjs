@@ -1,0 +1,3 @@
+export const id = "01-honesty-state";
+export const oldString = "[pe,ge]=D.useState(null),we=D.useRef(null),ue=D.useRef(null),Z=D.useRef(!0),Ae=D.useRef(0),I=D.useRef(null),Le=D.useRef(null),ie=D.useRef(null),se=D.useRef(null),De=D.useRef(null),Ue=D.useRef([]),L=D.useRef(!1),Q=D.useRef(!1),U=D.useRef(!1),ve=D.useRef(null)";
+export const newString = "[pe,ge]=D.useState(null),[vl,sv]=D.useState(\"unknown\"),[rr,sr]=D.useState(!1),we=D.useRef(null),ue=D.useRef(null),Z=D.useRef(!0),Ae=D.useRef(0),I=D.useRef(null),Le=D.useRef(null),ie=D.useRef(null),se=D.useRef(null),De=D.useRef(null),Ue=D.useRef([]),L=D.useRef(!1),Q=D.useRef(!1),U=D.useRef(!1),Tf=D.useRef(!1),Rc=D.useRef(0),Hs=D.useRef(!1),ve=D.useRef(null)";

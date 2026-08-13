@@ -82,6 +82,20 @@ os.replace(temporary, config_path)
 os.chmod(config_path, 0o600)
 PY
 
+readonly LOCK_FILE="$ROOT/run/messaging-gateway.lock"
+install -d -m 0700 "$ROOT/run"
+
+if supervisorctl status lil-smoove-messaging-gateway 2>/dev/null | grep -q 'RUNNING'; then
+  printf '%s\n' 'Supervised messaging gateway is RUNNING. Stop it before a foreground test.' >&2
+  exit 1
+fi
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  printf '%s\n' 'Messaging gateway lock is held. Another dispatcher is already running.' >&2
+  exit 1
+fi
+
 printf '%s\n' 'Telegram configuration is staged for the sole owner allowlist. Starting Hermes messaging gateway in the foreground for one text round-trip test.'
 printf '%s\n' 'In Telegram, message the bot: Lil Smoove text test. After it replies, return here and press Ctrl-C.'
 set -a

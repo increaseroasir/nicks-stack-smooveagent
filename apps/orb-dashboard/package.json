@@ -5,7 +5,8 @@
   "description": "Recovered and source-controlled Lil Smoove voice dashboard Worker.",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-worker.mjs",
+    "patch:operator": "node scripts/apply-operator-patches.mjs",
+    "build": "node scripts/apply-operator-patches.mjs && node scripts/build-worker.mjs",
     "verify:production": "node scripts/verify-production.mjs",
     "check": "npm run build && npm run verify:production",
     "deploy": "npm run check && wrangler deploy"

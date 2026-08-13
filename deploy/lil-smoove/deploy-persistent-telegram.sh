@@ -103,7 +103,21 @@ for _ in $(seq 1 30); do
 done
 
 supervisorctl status lil-smoove-messaging-gateway | grep -q 'RUNNING'
-[[ "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:9119/api/status)" == "200" ]]
-ss -ltn | awk '$4 ~ /:9119$/ {print $4}' | grep -qx '127.0.0.1:9119'
+install -d -m 0700 "$ROOT/run"
+if flock -n "$ROOT/run/messaging-gateway.lock" true; then
+  printf '%s\n' 'Telegram GO failed: messaging gateway lock is not held.' >&2
+  exit 1
+fi
+printf '%s\n' 'TELEGRAM_GO=1 messaging-gateway RUNNING and lock held'
+
+tui_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:9119/api/status || true)"
+if [[ "$tui_code" != "200" ]]; then
+  printf '%s\n' "TUI non-regression failed: :9119/api/status returned HTTP ${tui_code:-000}." >&2
+  exit 1
+fi
+ss -ltn | awk '$4 ~ /:9119$/ {print $4}' | grep -qx '127.0.0.1:9119' || {
+  printf '%s\n' 'TUI non-regression failed: :9119 is not loopback-only.' >&2
+  exit 1
+}
 
 printf 'Persistent Telegram deployment complete. Backup: %s\n' "$BACKUP_DIR"

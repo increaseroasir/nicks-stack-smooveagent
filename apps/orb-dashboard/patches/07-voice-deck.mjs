@@ -1,0 +1,3 @@
+export const id = "07-voice-deck";
+export const oldString = "children:O||b&&r===\"listening\"?\"LISTENING LIVE\":r===\"transcribing\"?\"TRANSCRIBING\":r===\"speaking\"?\"PLAYING RESPONSE\":r===\"thinking\"||r===\"working\"?\"PROCESSING\":r===\"interrupted\"?\"INTERRUPTED\":\"READY\"";
+export const newString = "children:c!==\"live\"?(c===\"connecting\"?\"CHECKING\":\"OFFLINE\"):O||b&&r===\"listening\"?\"LISTENING LIVE\":r===\"transcribing\"?\"TRANSCRIBING\":r===\"speaking\"?\"PLAYING RESPONSE\":r===\"thinking\"||r===\"working\"?\"PROCESSING\":r===\"interrupted\"?\"INTERRUPTED\":r===\"idle\"?\"READY\":r===\"approval\"?\"AWAITING YOU\":\"CHECKING\"";

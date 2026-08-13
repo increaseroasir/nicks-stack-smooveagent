@@ -1,0 +1,3 @@
+export const id = "14-transcribe-timeout-latch";
+export const oldString = "Dn=D.useCallback(async(q,te)=>{s(\"transcribing\"),j(\"Transcribing owner turn\");try{const ye=await fetch(\"/api/audio/transcribe\",{method:\"POST\",credentials:\"include\",headers:{\"content-type\":\"application/json\"},body:JSON.stringify({data_url:await u_(q),mime_type:q.type})})";
+export const newString = "Dn=D.useCallback(async(q,te)=>{Tf.current=!0,s(\"transcribing\"),j(\"Transcribing owner turn\");try{const ye=await fetch(\"/api/audio/transcribe\",{method:\"POST\",credentials:\"include\",headers:{\"content-type\":\"application/json\"},signal:AbortSignal.timeout(2e4),body:JSON.stringify({data_url:await u_(q),mime_type:q.type})})";
