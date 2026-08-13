@@ -9,14 +9,14 @@ readonly ROOT="/home/orgo/lil-smoove"
 readonly HERMES_HOME="$ROOT/home/.hermes"
 readonly HERMES_BIN="$ROOT/runtime/venv/bin/hermes"
 readonly OWNER_TELEGRAM_ID="5565447574"
-readonly LOCK_FILE="/var/lock/lil-smoove-messaging-gateway.lock"
+readonly LOCK_FILE="$ROOT/run/messaging-gateway.lock"
 
 export HOME="$ROOT/home"
 export HERMES_HOME
 export PATH="$ROOT/runtime/venv/bin:/usr/local/bin:/usr/bin:/bin"
 export PYTHONUNBUFFERED=1
 
-mkdir -p "$ROOT/logs" "$ROOT/workspace"
+mkdir -p "$ROOT/logs" "$ROOT/workspace" "$ROOT/run"
 
 if [[ ! -x "$HERMES_BIN" || ! -s "$HERMES_HOME/config.yaml" || ! -s "$HERMES_HOME/auth.json" || ! -s "$HERMES_HOME/.op.env" ]]; then
   printf '%s\n' 'Lil Smoove messaging gateway prerequisites are incomplete.' >&2
