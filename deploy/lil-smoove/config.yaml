@@ -47,6 +47,10 @@ skills:
 
 approvals:
   mode: smart
+  timeout: 300
+  cron_mode: deny
+  mcp_reload_confirm: true
+  destructive_slash_confirm: true
   denial_breaker_threshold: 3
   deny:
     - "git push --force*"
@@ -125,6 +129,20 @@ platform_toolsets:
     - todo
     - vision
     - web
+  telegram:
+    - browser
+    - clarify
+    - computer_use
+    - delegation
+    - file
+    - memory
+    - orgo_desktop
+    - session_search
+    - skills
+    - terminal
+    - todo
+    - vision
+    - web
 
 plugins:
   enabled:
@@ -132,6 +150,17 @@ plugins:
   entries:
     orgo-desktop-local:
       allow_tool_override: false
+
+gateway:
+  delivery_ledger: true
+  platforms:
+    telegram:
+      enabled: true
+      extra:
+        allow_from:
+          - "5565447574"
+        allow_admin_from:
+          - "5565447574"
 
 mcp_servers: {}
 
