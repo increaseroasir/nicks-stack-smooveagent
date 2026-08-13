@@ -18,7 +18,9 @@ if (( EUID != 0 )); then
   exit 1
 fi
 
-if [[ ! -x "$HERMES_BIN" || ! -x "$PYTHON_BIN" || ! -f "$CONFIG" ]]; then
+if [[ ! -x "$HERMES_BIN" || ! -x "$PYTHON_BIN" || ! -f "$CONFIG" || ! -f "$HERMES_HOME/.op.env" ]];
+then
+
   printf '%s\n' 'The isolated Hermes runtime is incomplete. No configuration was changed.' >&2
   exit 1
 fi
@@ -82,4 +84,8 @@ PY
 
 printf '%s\n' 'Telegram configuration is staged for the sole owner allowlist. Starting Hermes messaging gateway in the foreground for one text round-trip test.'
 printf '%s\n' 'In Telegram, message the bot: Lil Smoove text test. After it replies, return here and press Ctrl-C.'
+set -a
+# shellcheck disable=SC1090
+. "$HERMES_HOME/.op.env"
+set +a
 exec env HOME="$ROOT/home" HERMES_HOME="$HERMES_HOME" "$HERMES_BIN" gateway
