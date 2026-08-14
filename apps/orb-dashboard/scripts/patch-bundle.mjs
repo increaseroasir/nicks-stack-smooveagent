@@ -4,6 +4,13 @@ import { resolve } from "node:path";
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE = resolve(ROOT, "recovery/unpatched/index-DrSg8VbT.js");
 const TARGET = resolve(ROOT, "public/ui/assets/index-DrSg8VbT.js");
+const LIVE_STATE = resolve(ROOT, "src/lil-smoove-live-state.mjs");
+
+const LIVE_HELPER = (await readFile(LIVE_STATE, "utf8")).replaceAll(
+  /^export /gm,
+  "",
+);
+const LIL_SMOOVE_LIVE = `const LilSmooveLive=D.memo(function LilSmooveLive({channel:q,voice:te,toolName:ye,approvalDetail:be}){const Oe=D.useRef(null),[rt,Qe]=D.useState(typeof document<"u"&&document.hidden);D.useEffect(()=>{const nt=()=>Qe(document.hidden);return nt(),document.addEventListener("visibilitychange",nt),()=>document.removeEventListener("visibilitychange",nt)},[]);const st=deriveLilSmooveLiveState({channel:q,voice:te,toolName:ye,approvalDetail:be});D.useEffect(()=>{const el=Oe.current;if(!el)return;el.dataset.state=st.id,el.className="ls-live ls-live--"+st.id+(rt?" is-hidden":""),el.setAttribute("aria-label","Lil Smoove live: "+st.label),el.innerHTML=lilSmooveLiveMarkup(st)},[st.id,st.label,st.toolName,st.light,rt]);return V.jsxDEV("section",{ref:Oe,className:"ls-live","data-state":st.id,"aria-label":"Lil Smoove live"},void 0,!1,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:761,columnNumber:9},this)});`;
 
 const TRANSCRIPT_VIEW = `function TranscriptView({apiRef:r}){const[s,c]=D.useState(s_),f=D.useRef({text:"",id:null,timer:0});const m=D.useCallback(()=>{const y=f.current;if(!y.text)return;const b=y.text;y.text="";c(v=>{if(y.id){const E=v.length-1;if(E>=0&&v[E].id===y.id){const x=v.slice();return x[E]={...v[E],body:v[E].body+b},x}const w=v.findIndex(O=>O.id===y.id);if(w>=0){const O=v.slice();return O[w]={...v[w],body:v[w].body+b},O}}const E=crypto.randomUUID();return y.id=E,[...v,{id:E,speaker:"LIL SMOOVE",stamp:GE(),body:b}]})},[]);D.useEffect(()=>(r.current={pushDelta(y){f.current.text+=y;if(!f.current.timer){const b=Math.max(0,40-(performance.now()-(f.current.last||0)));f.current.timer=window.setTimeout(()=>{f.current.timer=0,f.current.last=performance.now(),m()},b)}},complete(){f.current.timer&&(window.clearTimeout(f.current.timer),f.current.timer=0),m(),f.current.id=null},add(y,b){f.current.timer&&(window.clearTimeout(f.current.timer),f.current.timer=0),m(),f.current.id=null,c(v=>[...v,{id:crypto.randomUUID(),speaker:y,stamp:GE(),body:b}])}},()=>{r.current=null}),[r,m]);const y=s.length>36?s.slice(-36):s;return V.jsxDEV("div",{"data-loc":"client/src/pages/Home.tsx:744",className:"transcript-list",children:y.map(b=>V.jsxDEV("article",{"data-loc":"client/src/pages/Home.tsx:746",className:\`transcript-line transcript-\${b.speaker.toLowerCase()}\`,children:[V.jsxDEV("div",{"data-loc":"client/src/pages/Home.tsx:747",children:[V.jsxDEV("span",{"data-loc":"client/src/pages/Home.tsx:747",children:b.speaker},void 0,!1,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:747,columnNumber:63},this),V.jsxDEV("time",{"data-loc":"client/src/pages/Home.tsx:747",children:b.stamp},void 0,!1,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:747,columnNumber:131},this)]},void 0,!0,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:747,columnNumber:17},this),V.jsxDEV("p",{"data-loc":"client/src/pages/Home.tsx:748",children:b.body},void 0,!1,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:748,columnNumber:17},this)]},b.id,!0,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:746,columnNumber:15},this))},void 0,!1,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:744,columnNumber:11},this)}`;
 
@@ -14,7 +21,7 @@ const REPLACEMENTS = [
   },
   {
     from: 'lineNumber:60,columnNumber:5},this)}function $E(){',
-    to: `lineNumber:60,columnNumber:5},this)});${TRANSCRIPT_VIEW}function $E(){`,
+    to: `lineNumber:60,columnNumber:5},this)});${TRANSCRIPT_VIEW}${LIVE_HELPER}${LIL_SMOOVE_LIVE}function $E(){`,
   },
   {
     from: "[S,N]=D.useState(s_)",
@@ -31,6 +38,10 @@ const REPLACEMENTS = [
   {
     from: 'if(be==="message.complete"){Le.current=null,j("Response complete"),Yn();return}',
     to: 'if(be==="message.complete"){lsApi.current&&lsApi.current.complete(),Le.current=null,j("Response complete"),Yn();return}',
+  },
+  {
+    from: 'this),V.jsxDEV("div",{"data-loc":"client/src/pages/Home.tsx:762",className:"context-card current-card"',
+    to: 'this),V.jsxDEV(LilSmooveLive,{channel:c,voice:r,toolName:fe,approvalDetail:pe},void 0,!1,{fileName:"/home/ubuntu/lil-smoove-orb-dashboard/client/src/pages/Home.tsx",lineNumber:761,columnNumber:9},this),V.jsxDEV("div",{"data-loc":"client/src/pages/Home.tsx:762",className:"context-card current-card"',
   },
 ];
 
@@ -63,6 +74,9 @@ if (js.includes("manus-analytics") || js.includes("__MANUS_HOST_DEV__")) {
 }
 if (!js.includes("TranscriptView") || !js.includes("pushDelta")) {
   throw new Error("stream buffer was not inserted");
+}
+if (!js.includes("LilSmooveLive") || !js.includes("deriveLilSmooveLiveState")) {
+  throw new Error("Lil Smoove live widget was not inserted");
 }
 
 await writeFile(TARGET, js);

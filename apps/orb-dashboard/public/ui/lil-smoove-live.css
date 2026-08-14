@@ -1,0 +1,169 @@
+.context-rail {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.ls-live {
+  --ls-ink: #c5d1d3;
+  --ls-mute: #8e9baa;
+  --ls-lime: #c7ff4b;
+  --ls-amber: #f0b429;
+  --ls-red: #ff5d5d;
+  --ls-line: #eef2ea24;
+  background: linear-gradient(90deg, #18212e57, #090f1833);
+  border: 1px solid var(--ls-line);
+  border-radius: 4px;
+  flex: 0 0 auto;
+  margin: 10px 0 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+.ls-live__head,
+.ls-live__foot {
+  align-items: center;
+  color: var(--ls-mute);
+  display: flex;
+  font: 700 9px/1 "IBM Plex Mono", "DM Mono", monospace;
+  justify-content: space-between;
+  letter-spacing: 0.13em;
+  padding: 8px 10px;
+}
+.ls-live__head b,
+.ls-live__foot strong {
+  color: #e6ece7;
+  letter-spacing: 0.08em;
+  max-width: 58%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ls-live__head b[data-light="lime"] { color: var(--ls-lime); }
+.ls-live__head b[data-light="amber"] { color: var(--ls-amber); }
+.ls-live__head b[data-light="red"] { color: var(--ls-red); }
+.ls-live__stage {
+  background:
+    linear-gradient(#c7ff4b0f 1px, transparent 1px) 0 0 / 100% 8px,
+    #070b12;
+  border-top: 1px solid var(--ls-line);
+  border-bottom: 1px solid var(--ls-line);
+}
+.ls-live__scene {
+  display: block;
+  height: auto;
+  max-height: 92px;
+  width: 100%;
+}
+.ls-live__room { fill: #0c111b; stroke: #eef2ea22; }
+.ls-live__grid { fill: none; stroke: #c7ff4b14; stroke-width: 1; }
+.ls-live__desk,
+.ls-live__desk-leg { fill: #243041; }
+.ls-live__chair,
+.ls-live__chair-back { fill: #1a2432; }
+.ls-live__hair { fill: #6f7a68; }
+.ls-live__head { fill: #d7e0d4; }
+.ls-live__eye { fill: #0c111b; }
+.ls-live__torso { fill: #9aa48d; }
+.ls-live__arm { fill: #c7ff4b; }
+.ls-live__headset,
+.ls-live__in-waves,
+.ls-live__out-waves,
+.ls-live__alert,
+.ls-live__cursor { display: none; }
+.ls-live__bezel { fill: #151c26; stroke: #c7ff4b33; }
+.ls-live__screen { fill: #101820; }
+.ls-live__stand { fill: #1c2532; }
+.ls-live__lamp { fill: var(--ls-amber); }
+.ls-live__in-waves,
+.ls-live__out-waves { fill: none; stroke: var(--ls-lime); stroke-width: 1.4; }
+.ls-live__alert rect { fill: #2a1010; stroke: var(--ls-red); }
+.ls-live__alert text {
+  fill: var(--ls-red);
+  font: 700 7px/1 "IBM Plex Mono", "DM Mono", monospace;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+}
+
+.ls-live--connecting .ls-live__lamp { fill: var(--ls-amber); }
+.ls-live--connecting .ls-live__body {
+  animation: ls-wait 1.8s ease-in-out infinite;
+}
+.ls-live--ready .ls-live__lamp { fill: var(--ls-lime); }
+.ls-live--ready .ls-live__screen { fill: #16301a; }
+.ls-live--listening .ls-live__headset,
+.ls-live--listening .ls-live__in-waves { display: block; }
+.ls-live--listening .ls-live__lamp { fill: var(--ls-lime); }
+.ls-live--thinking .ls-live__cursor { display: block; }
+.ls-live--thinking .ls-live__screen { fill: #13261a; }
+.ls-live--tool .ls-live__arm--r { transform-origin: 106px 50px; }
+.ls-live--tool .ls-live__screen { fill: #1a2c14; }
+.ls-live--speaking .ls-live__out-waves { display: block; }
+.ls-live--speaking .ls-live__screen { fill: #1d3318; }
+.ls-live--approval .ls-live__alert { display: block; }
+.ls-live--approval .ls-live__lamp { fill: var(--ls-red); }
+.ls-live--interrupted .ls-live__body { transform: translateX(4px); }
+.ls-live--interrupted .ls-live__lamp { fill: var(--ls-amber); }
+.ls-live--disconnected { filter: grayscale(0.22) brightness(0.84); }
+.ls-live--disconnected .ls-live__screen { fill: #090d12; }
+.ls-live--disconnected .ls-live__lamp { fill: var(--ls-red); }
+
+.ls-live--ready .ls-live__body {
+  animation: ls-breathe 2.8s ease-in-out infinite;
+}
+.ls-live--ready .ls-live__screen {
+  animation: ls-glow 2.4s ease-in-out infinite;
+}
+.ls-live--listening .ls-live__in-waves {
+  animation: ls-wave 1.1s ease-in-out infinite;
+}
+.ls-live--thinking .ls-live__arm--r,
+.ls-live--tool .ls-live__arm--r {
+  animation: ls-type 0.42s steps(2) infinite;
+}
+.ls-live--thinking .ls-live__cursor {
+  animation: ls-cursor 0.9s steps(1) infinite;
+}
+.ls-live--speaking .ls-live__out-waves {
+  animation: ls-wave 0.9s ease-in-out infinite;
+}
+.ls-live--interrupted .ls-live__stage {
+  animation: ls-interrupt 0.7s ease-out 1;
+}
+
+.ls-live.is-hidden .ls-live__body,
+.ls-live.is-hidden .ls-live__screen,
+.ls-live.is-hidden .ls-live__in-waves,
+.ls-live.is-hidden .ls-live__out-waves,
+.ls-live.is-hidden .ls-live__arm--r,
+.ls-live.is-hidden .ls-live__cursor,
+.ls-live.is-hidden .ls-live__stage {
+  animation-play-state: paused;
+}
+
+@keyframes ls-wait {
+  50% { opacity: 0.62; }
+}
+@keyframes ls-breathe {
+  50% { transform: translateY(1px); }
+}
+@keyframes ls-glow {
+  50% { fill: #214d28; }
+}
+@keyframes ls-wave {
+  50% { opacity: 0.25; }
+}
+@keyframes ls-type {
+  50% { transform: translateY(2px); }
+}
+@keyframes ls-cursor {
+  50% { opacity: 0; }
+}
+@keyframes ls-interrupt {
+  0% { filter: brightness(1.4); }
+  100% { filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-live * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

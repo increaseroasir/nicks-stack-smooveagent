@@ -6,8 +6,11 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/patch-bundle.mjs && node scripts/build-worker.mjs",
+    "test": "node --test src/lil-smoove-live-state.test.mjs",
+    "lint": "node scripts/verify-production.mjs",
+    "typecheck": "node --check src/lil-smoove-live-state.mjs && node --check src/lil-smoove-live-state.test.mjs && node --check scripts/patch-bundle.mjs",
     "verify:production": "node scripts/verify-production.mjs",
-    "check": "npm run build && npm run verify:production",
+    "check": "npm test && npm run typecheck && npm run build && npm run verify:production",
     "preview": "npm run check && wrangler versions upload --message \"frontend-perf preview\"",
     "deploy": "npm run check && wrangler deploy"
   },

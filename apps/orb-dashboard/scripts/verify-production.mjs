@@ -7,6 +7,10 @@ const failures = [];
 const html = await readFile(joinHtml(), "utf8");
 const worker = await readFile(resolve(ROOT, "src/worker-template.js"), "utf8");
 const wrangler = await readFile(resolve(ROOT, "wrangler.jsonc"), "utf8");
+const unpatched = await readFile(
+  resolve(ROOT, "recovery/unpatched/index-DrSg8VbT.js"),
+  "utf8",
+);
 const bundle = await readFile(
   resolve(ROOT, "public/ui/assets/index-DrSg8VbT.js"),
   "utf8",
@@ -27,6 +31,9 @@ if (Buffer.byteLength(html) > 4096) {
 }
 if (!html.includes("/ui/perf.js") || !html.includes("/ui/assets/index-DrSg8VbT.js")) {
   failures.push("index.html missing perf or application bundle");
+}
+if (!html.includes("/ui/lil-smoove-live.css")) {
+  failures.push("index.html missing Lil Smoove live stylesheet");
 }
 
 for (const forbidden of [
@@ -62,6 +69,16 @@ if (bundle.includes("`${q.speaker}-${te}-${q.body}`")) {
 }
 if (bundle.includes("__MANUS_HOST_DEV__") || bundle.includes("manus-analytics")) {
   failures.push("application bundle still references Manus");
+}
+if (!bundle.includes("LilSmooveLive") || !bundle.includes("deriveLilSmooveLiveState")) {
+  failures.push("application bundle is missing the Lil Smoove live widget");
+}
+const unpatchedSockets = unpatched.split("new WebSocket(").length;
+const patchedSockets = bundle.split("new WebSocket(").length;
+if (patchedSockets !== unpatchedSockets) {
+  failures.push(
+    `bundle WebSocket constructors changed (${unpatchedSockets - 1} -> ${patchedSockets - 1})`,
+  );
 }
 
 if (failures.length) {

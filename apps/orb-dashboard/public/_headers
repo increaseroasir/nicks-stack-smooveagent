@@ -7,6 +7,10 @@
   Cache-Control: no-store
   X-Content-Type-Options: nosniff
 
+/ui/lil-smoove-live.css
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff
+
 /ui/assets/*
   Cache-Control: public, max-age=31536000, immutable
   X-Content-Type-Options: nosniff
