@@ -1,45 +1,21 @@
 // Lil Smoove voice-dashboard static shell.
 //
-// Only `/` and `/ui/*` are served here. Every Hermes endpoint—including
-// `/api/*`, `/chat`, and WebSocket upgrades—must continue to the Orgo tunnel
-// and must never be handled by this Worker.
-
-const ASSETS = __ASSET_MAP__;
-
-async function unpack(encoded) {
-  const binary = atob(encoded);
-  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  return new Response(
-    new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")),
-  ).arrayBuffer();
-}
+// Only `/` and `/ui/*` are served from the Cloudflare assets pipeline.
+// Every Hermes endpoint—including `/api/*`, `/chat`, and WebSocket
+// upgrades—must continue to the Orgo tunnel and must never be handled here.
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const assetPath =
       url.pathname === "/"
-        ? "/"
+        ? "/index.html"
         : url.pathname.startsWith("/ui/")
           ? url.pathname
           : null;
 
     if (!assetPath) return new Response("Not found", { status: 404 });
 
-    const asset = ASSETS[assetPath];
-    if (!asset) return new Response("Not found", { status: 404 });
-
-    const body = await unpack(asset.data);
-    return new Response(body, {
-      headers: {
-        "content-type": asset.mime,
-        "cache-control":
-          assetPath === "/"
-            ? "no-store"
-            : "public, max-age=31536000, immutable",
-        "x-content-type-options": "nosniff",
-        "referrer-policy": "no-referrer",
-      },
-    });
+    return env.ASSETS.fetch(new URL(assetPath, request.url));
   },
 };

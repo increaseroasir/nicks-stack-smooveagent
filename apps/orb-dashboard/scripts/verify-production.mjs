@@ -1,101 +1,73 @@
-import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
-import { join, relative, resolve, sep } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const PUBLIC = join(ROOT, "public");
-
-function sha256(bytes) {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
-async function walk(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await walk(path)));
-    else if (entry.isFile()) files.push(path);
-  }
-  return files;
-}
-
-const production = JSON.parse(
-  await readFile(
-    join(ROOT, "recovery", "production-assets-manifest.json"),
-    "utf8",
-  ),
-);
-const metadata = JSON.parse(
-  await readFile(join(ROOT, "recovery", "production-metadata.json"), "utf8"),
-);
-
-const expectedRoutes = new Set(production.map((entry) => entry.route));
-const actualRoutes = new Set();
 const failures = [];
 
-for (const file of await walk(PUBLIC)) {
-  const relativePath = relative(PUBLIC, file).split(sep).join("/");
-  actualRoutes.add(relativePath === "index.html" ? "/" : `/${relativePath}`);
-}
-
-for (const entry of production) {
-  const file =
-    entry.route === "/"
-      ? join(PUBLIC, "index.html")
-      : join(PUBLIC, entry.route.replace(/^\//, ""));
-  let bytes;
-  try {
-    bytes = await readFile(file);
-  } catch {
-    failures.push(`${entry.route}: missing ${relative(ROOT, file)}`);
-    continue;
-  }
-  const digest = sha256(bytes);
-  if (bytes.length !== entry.bytes || digest !== entry.sha256) {
-    failures.push(
-      `${entry.route}: expected ${entry.bytes}/${entry.sha256}, got ${bytes.length}/${digest}`,
-    );
-  }
-}
-
-for (const route of actualRoutes) {
-  if (!expectedRoutes.has(route)) failures.push(`${route}: unexpected asset`);
-}
-for (const route of expectedRoutes) {
-  if (!actualRoutes.has(route)) failures.push(`${route}: absent from recovered tree`);
-}
-
-const exactWorker = await readFile(
-  join(ROOT, "recovery", "production-active-worker.js"),
+const html = await readFile(joinHtml(), "utf8");
+const worker = await readFile(resolve(ROOT, "src/worker-template.js"), "utf8");
+const wrangler = await readFile(resolve(ROOT, "wrangler.jsonc"), "utf8");
+const bundle = await readFile(
+  resolve(ROOT, "public/ui/assets/index-DrSg8VbT.js"),
+  "utf8",
 );
-const exactWorkerHash = sha256(exactWorker);
-if (exactWorkerHash !== metadata.exact_worker_sha256) {
-  failures.push(
-    `recovery/production-active-worker.js: expected ${metadata.exact_worker_sha256}, got ${exactWorkerHash}`,
-  );
+
+function joinHtml() {
+  return resolve(ROOT, "public/index.html");
 }
 
-const template = await readFile(join(ROOT, "src", "worker-template.js"), "utf8");
-for (const forbiddenHandler of [
+if (html.includes("manus-runtime") || html.includes("manus-analytics")) {
+  failures.push("index.html still includes Manus runtime or analytics");
+}
+if (html.includes("__MANUS_HOST_DEV__")) {
+  failures.push("index.html still includes Manus host flag");
+}
+if (Buffer.byteLength(html) > 4096) {
+  failures.push(`index.html is ${Buffer.byteLength(html)} bytes; expected a thin shell`);
+}
+if (!html.includes("/ui/perf.js") || !html.includes("/ui/assets/index-DrSg8VbT.js")) {
+  failures.push("index.html missing perf or application bundle");
+}
+
+for (const forbidden of [
+  "__ASSET_MAP__",
+  "atob(",
+  "DecompressionStream",
   'url.pathname.startsWith("/api/")',
   'url.pathname === "/chat"',
   'request.headers.get("upgrade")',
 ]) {
-  if (template.includes(forbiddenHandler)) {
-    failures.push(
-      `src/worker-template.js unexpectedly handles ${forbiddenHandler}`,
-    );
+  if (worker.includes(forbidden)) {
+    failures.push(`worker-template.js unexpectedly contains ${forbidden}`);
   }
+}
+if (!worker.includes("env.ASSETS.fetch")) {
+  failures.push("worker-template.js does not serve / via ASSETS");
+}
+if (!wrangler.includes('"directory": "./public"')) {
+  failures.push("wrangler.jsonc is not using Cloudflare static assets");
+}
+if (!wrangler.includes('"run_worker_first": true')) {
+  failures.push("wrangler.jsonc must run the Worker first so /api and /chat stay unhandled");
+}
+
+if (bundle.includes("Qe.map(yn=>yn.id===nt")) {
+  failures.push("bundle still maps the full transcript on every delta");
+}
+if (!bundle.includes("TranscriptView") || !bundle.includes("pushDelta")) {
+  failures.push("bundle is missing buffered transcript updates");
+}
+if (bundle.includes("`${q.speaker}-${te}-${q.body}`")) {
+  failures.push("bundle still remounts transcript lines from body text");
+}
+if (bundle.includes("__MANUS_HOST_DEV__") || bundle.includes("manus-analytics")) {
+  failures.push("application bundle still references Manus");
 }
 
 if (failures.length) {
-  console.error("Production parity verification failed:");
+  console.error("Frontend integrity verification failed:");
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
-console.log(
-  `Verified ${production.length} recovered assets and active Worker integrity.`,
-);
-console.log(`exact_worker_sha256=${exactWorkerHash}`);
+console.log("Verified slim shell, static assets Worker, and buffered transcript.");

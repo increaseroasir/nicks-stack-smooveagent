@@ -4,7 +4,7 @@ This directory is the source-controlled deployment package for the existing Lil 
 
 ## What this Worker does
 
-The Cloudflare Worker named `lil-smoove-orb` serves only the custom dashboard shell at `/` and immutable frontend assets under `/ui/*`. It intentionally returns `404` for every other route so the existing Cloudflare routing can pass Hermes traffic to the persistent Orgo computer.
+The Cloudflare Worker named `lil-smoove-orb` serves only `/` via the Workers static-assets binding. Immutable files under `/ui/*` are delivered by Cloudflare's asset pipeline (compression + cache). The Worker returns `404` for every other route so existing Cloudflare routes can pass Hermes traffic to the persistent Orgo computer. Do not embed or gunzip assets inside the Worker.
 
 | Route | Owner |
 |---|---|
@@ -39,7 +39,7 @@ npm run check
 npm run deploy
 ```
 
-`npm run check` rebuilds the Worker and verifies every recovered production asset before any deployment. `wrangler.jsonc` uses `keep_vars: true` so an ordinary deployment does not remove the existing encrypted Cloudflare secret.
+`npm run check` patches the recovered UI bundle, rebuilds the thin Worker, and verifies the static-asset boundary. `npm run preview` uploads a Worker version without changing production traffic. `wrangler.jsonc` uses `keep_vars: true` so an ordinary deployment does not remove the existing encrypted Cloudflare secret.
 
 ## Security boundaries
 

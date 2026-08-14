@@ -1,8 +1,16 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "lil-smoove-orb",
-  "main": "dist/worker.js",
+  "main": "src/worker-template.js",
   "compatibility_date": "2026-08-13",
   "compatibility_flags": ["nodejs_compat"],
-  "keep_vars": true
+  "keep_vars": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "not_found_handling": "none",
+    "run_worker_first": true
+  }
 }
