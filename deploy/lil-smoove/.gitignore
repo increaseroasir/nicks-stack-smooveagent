@@ -1,0 +1,9 @@
+.env
+auth.json
+sessions/
+logs/
+state-snapshots/
+backups/
+*.log
+*.key
+*.pem

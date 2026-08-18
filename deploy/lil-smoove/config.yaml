@@ -1,0 +1,172 @@
+# Lil Smoove V1 — isolated, credential-free Hermes configuration
+# Secrets must never be stored in this file.
+
+model:
+  default: anthropic/claude-sonnet-5
+  provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+
+agent:
+  max_turns: 60
+  service_tier: fast
+  verify_on_stop: true
+  verbose: false
+  reasoning_effort: medium
+  clarify_timeout: 3600
+
+terminal:
+  backend: local
+  cwd: /home/orgo/lil-smoove/workspace
+  timeout: 180
+  home_mode: profile
+
+browser:
+  inactivity_timeout: 120
+  command_timeout: 30
+  dialog_policy: must_respond
+  dialog_timeout_s: 300
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200
+  user_char_limit: 1375
+  provider: ''
+  nudge_interval: 10
+  flush_min_turns: 6
+
+delegation:
+  max_iterations: 50
+  max_concurrent_children: 3
+  max_spawn_depth: 1
+  orchestrator_enabled: true
+
+skills:
+  creation_nudge_interval: 15
+  guard_agent_created: true
+
+approvals:
+  mode: smart
+  timeout: 300
+  cron_mode: deny
+  mcp_reload_confirm: true
+  destructive_slash_confirm: true
+  denial_breaker_threshold: 3
+  deny:
+    - "git push --force*"
+    - "rm -rf /"
+    - "*curl*|*sh*"
+  smart_policy: |
+    Always escalate commands or tool actions that would send an external message,
+    spend money, publish content, delete important data, change a live campaign
+    or production system, modify permissions, create or rotate credentials, or
+    enter a password, 2FA code, or authorization token. Read-only research and
+    harmless local inspection may proceed. Never accept permission or security
+    dialogs on behalf of the owner.
+
+hooks_auto_accept: false
+
+security:
+  redact_secrets: true
+  tirith_enabled: true
+  tirith_fail_open: false
+
+checkpoints:
+  enabled: true
+  max_snapshots: 20
+
+session_reset:
+  mode: both
+  idle_minutes: 1440
+  at_hour: 4
+
+timezone: America/New_York
+
+group_sessions_per_user: true
+max_concurrent_sessions: 3
+
+streaming:
+  enabled: true
+
+display:
+  compact: false
+  busy_input_mode: interrupt
+  bell_on_complete: false
+  show_reasoning: false
+  streaming: true
+  interim_assistant_messages: true
+  tool_progress: all
+  cleanup_progress: false
+  long_running_notifications: true
+  busy_ack_detail: true
+  background_process_notifications: all
+
+# The bootstrap service-account token is loaded only from
+# $HERMES_HOME/.op.env (mode 0600, never committed). The secure bootstrap
+# helper populates this map with only non-empty, approved vault fields.
+secrets:
+  onepassword:
+    enabled: false
+    env: {}
+    service_account_token_env: OP_SERVICE_ACCOUNT_TOKEN
+    binary_path: /usr/bin/op
+    cache_ttl_seconds: 0
+    override_existing: true
+
+platform_toolsets:
+  cli:
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - delegation
+    - file
+    - memory
+    - orgo_desktop
+    - session_search
+    - skills
+    - terminal
+    - todo
+    - vision
+    - web
+  telegram:
+    - browser
+    - clarify
+    - computer_use
+    - delegation
+    - file
+    - memory
+    - orgo_desktop
+    - session_search
+    - skills
+    - terminal
+    - todo
+    - vision
+    - web
+
+plugins:
+  enabled:
+    - orgo-desktop-local
+  entries:
+    orgo-desktop-local:
+      allow_tool_override: false
+
+gateway:
+  delivery_ledger: true
+  platforms:
+    telegram:
+      enabled: true
+      extra:
+        allow_from:
+          - "5565447574"
+        allow_admin_from:
+          - "5565447574"
+
+mcp_servers: {}
+
+updates:
+  pre_update_backup: quick
+  backup_keep: 5
+  non_interactive_local_changes: stash
+
+_config_version: 33

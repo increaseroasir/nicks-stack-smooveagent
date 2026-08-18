@@ -2,7 +2,7 @@
 
 <img src="docs/assets/hero.jpg" alt="Nick's Stack — a Hermes agent on Orgo" width="800"/>
 
-# Nick's Stack 🚀
+# Nick's Stack — Smoove Agent
 
 **Your own always-on AI agent, on its own cloud computer — with its own phone, email, payment card, and password vault.**
 
@@ -94,6 +94,20 @@ This repository also publishes a public-safe reference architecture and an evide
 
 ---
 
+## Lil Smoove voice dashboard
+
+The existing private orb dashboard is source-controlled under [`apps/orb-dashboard`](apps/orb-dashboard). Its Cloudflare Worker serves only `/` and `/ui/*`; authenticated Hermes API, WebSocket, native dashboard, transcription, and ElevenLabs speech routes continue to the persistent Orgo runtime. The app includes an exact production recovery package, deterministic rebuild tooling, integrity checks, and guarded deployment configuration that preserves the encrypted Hermes session secret.
+
+```bash
+cd apps/orb-dashboard
+npm ci
+npm run check
+```
+
+See the app README before any deployment. Never add `/api/*`, `/api/ws`, or `/chat` handlers to the static-shell Worker.
+
+---
+
 ## 🟢 Easiest way to run it
 
 1. **Make an Orgo account** → [orgo.ai](https://orgo.ai).
@@ -131,6 +145,7 @@ This repository also publishes a public-safe reference architecture and an evide
 |---|---|
 | **Agent** | Hermes v0.18 (Nous) · `gpt-5.5` — a ChatGPT/codex flip is two documented lines |
 | **Chat** | Telegram, scan-a-QR onboarding (no BotFather) |
+| **Dashboard** | Private orb control center with microphone, conversation mode, interruption, transcript, tool/task state, and ElevenLabs speech |
 | **Secrets** | 1Password secret plane — `op` CLI baked, 19-key map, token isolated in `~/.hermes/.op.env` |
 | **MCP (13)** | AgentMail · AgentCard · AgentPhone · Composio · Latitude · Orgo · x-docs · X API ×2 · Linear · ideabrowser · vidiq · Obsidian vault |
 | **Phone** | AgentPhone **webhook bridge** — supervised service, self-provisions a cloudflared tunnel, wakes itself when keyed |
