@@ -79,6 +79,19 @@ flowchart LR
 
 Every integration ships **key-less**: an unset key just parks that server (it revives within 5 minutes of a key landing, or instantly via `/mcp` in chat). Nothing crash-loops, nothing nags.
 
+## Reliability architecture
+
+This repository also publishes a public-safe reference architecture and an evidence-backed reliability benchmark for operators building a persistent Hermes agent on Orgo. The package explains the difference between a working demo and a smooth daily operator system: supervised services, task and approval ledgers, narrow tool authority, safe retries, verified desktop actions, and recovery testing.
+
+| Resource | Purpose |
+|---|---|
+| [Architecture overview](docs/architecture/HERMES_ORGO_ARCHITECTURE.md) | Defines the one-agent Hermes/Orgo design and tool-selection hierarchy. |
+| [Architecture diagram](docs/assets/hermes-orgo-architecture.png) | Visual map of interfaces, runtime, computer control, secrets, and integrations. |
+| [Computer-control contract](docs/architecture/ORGO_COMPUTER_CONTROL.md) | Specifies the screenshot → inspect → act → verify operating loop. |
+| [Security and authority](docs/architecture/SECURITY_AND_AUTHORITY.md) | Documents smart approvals, fail-closed scheduled work, and secret boundaries. |
+| [Reliability benchmark](docs/research/HERMES_RELIABILITY_BENCHMARK.md) | Compares the architecture with current public agent-operation patterns and prioritizes hardening work. |
+| [Public repository boundary](docs/architecture/PUBLIC_REPOSITORY_BOUNDARY.md) | Defines material that is safe to publish and material that must remain runtime-only. |
+
 ---
 
 ## 🟢 Easiest way to run it

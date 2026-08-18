@@ -1,0 +1,77 @@
+flowchart TB
+    status["CURRENT STATUS: Target architecture only — build has not started"]:::status
+    owner(["Owner"]):::owner
+
+    subgraph interfaces["Private interfaces — same agent, different entry points"]
+      direction LR
+      orb["Orb Dashboard<br/>animated voice orb • transcript • tool status<br/>approvals • optional live Orgo viewer"]:::interface
+      telegram["Telegram<br/>text + voice fallback/mobile interface"]:::interface
+    end
+
+    subgraph voice["Voice layer — ElevenLabs is not a second brain"]
+      direction LR
+      stt["Speech-to-text<br/>Dashboard realtime STT / Telegram transcription"]:::voice
+      tts["ElevenLabs streaming TTS<br/>voice ID is configuration; API key stays server-side"]:::voice
+    end
+
+    subgraph hermesBox["Hermes — one persistent agent brain / runtime"]
+      direction TB
+      hermes["Hermes Gateway & Session Runtime<br/>streaming events • session continuity<br/>TUI Gateway JSON-RPC/WebSocket for rich UI"]:::brain
+      capabilities["Core agent capabilities<br/>memory • skills • terminal/files • browser<br/>delegation • cron • Kanban • MCP/plugins"]:::capability
+      approvals{"Smart approval gate<br/>material external actions require owner approval"}:::approval
+      localDesktop["Nick's Stack: orgo-desktop-local<br/>same-box graphical control plugin / skill"]:::capability
+      hermes --> capabilities
+      hermes --> approvals
+      hermes --> localDesktop
+    end
+
+    subgraph orgoBox["Orgo — persistent cloud computer and visible work surface"]
+      direction TB
+      orgo["Persistent Linux desktop<br/>Chrome • Bash • files • persistent disk<br/>VNC/noVNC viewer • local Desktop API"]:::computer
+      toolPriority["Execution priority<br/>1 API/MCP → 2 browser DOM → 3 terminal/script<br/>4 visible Orgo desktop as universal fallback"]:::policy
+      guiLoop["GUI verification loop<br/>screenshot → inspect → act → re-screenshot<br/>→ verify visible result → re-plan"]:::policy
+      orgo --> toolPriority
+      orgo --> guiLoop
+    end
+
+    subgraph integrations["Authorized integrations & secret plane"]
+      direction LR
+      onePassword["1Password<br/>Hermes vault / least privilege secrets"]:::secret
+      composio["Composio / MCPs<br/>approved SaaS integrations"]:::integration
+      services["V1 examples<br/>GitHub • model provider • Telegram • ElevenLabs"]:::integration
+      future["Phase 2 — after core V1 passes<br/>GHL • Meta • ClickUp • Cloudflare • Supabase • Retell"]:::future
+    end
+
+    status -. clarifies .-> hermes
+    owner --> orb
+    owner --> telegram
+
+    orb <-->|"live sessions • streaming response<br/>tool events • approvals"| hermes
+    telegram -->|"text / message"| hermes
+    telegram -->|"voice note"| stt
+    orb -->|"browser microphone"| stt
+    stt -->|"committed utterance"| hermes
+    hermes -->|"response chunks"| tts
+    tts -->|"spoken reply; barge-in cancels stale audio"| orb
+    tts -->|"spoken reply"| telegram
+
+    localDesktop -->|"mouse • keyboard • screenshot<br/>visible verification"| orgo
+    capabilities -->|"APIs / DOM / terminal / files"| orgo
+    onePassword -. "server-side secrets only" .-> hermes
+    composio --> hermes
+    services --> hermes
+    future -. "deferred dependency" .-> hermes
+    approvals -->|"request / approve / deny"| owner
+
+    classDef owner fill:#F1C40F,stroke:#7D6608,color:#111827,stroke-width:2px
+    classDef status fill:#FDEDEC,stroke:#C0392B,color:#78281F,stroke-width:2px
+    classDef interface fill:#D6EAF8,stroke:#2874A6,color:#154360,stroke-width:2px
+    classDef voice fill:#E8DAEF,stroke:#7D3C98,color:#512E5F,stroke-width:2px
+    classDef brain fill:#D5F5E3,stroke:#1E8449,color:#145A32,stroke-width:3px
+    classDef capability fill:#EAF2F8,stroke:#2E86C1,color:#154360,stroke-width:1.5px
+    classDef approval fill:#FDEBD0,stroke:#CA6F1E,color:#784212,stroke-width:2px
+    classDef computer fill:#D4EFDF,stroke:#239B56,color:#145A32,stroke-width:2px
+    classDef policy fill:#F4F6F6,stroke:#566573,color:#1B2631,stroke-width:1.5px
+    classDef secret fill:#FADBD8,stroke:#CB4335,color:#78281F,stroke-width:2px
+    classDef integration fill:#FCF3CF,stroke:#B7950B,color:#7D6608,stroke-width:1.5px
+    classDef future fill:#EBDEF0,stroke:#884EA0,color:#512E5F,stroke-width:1.5px
